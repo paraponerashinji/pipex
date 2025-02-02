@@ -22,7 +22,9 @@ int	createchildren(int argc, char **argv, char **envp)
 
 	p = fork();
 	if (p == 0)
-		
+	{
+		// CODE
+	}	
 }
 
 int	main(int argc, char *argv[], char *envp[])
