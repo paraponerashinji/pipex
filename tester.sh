@@ -1,23 +1,44 @@
 #!/bin/bash
 
 # Variables
-infile="infile.txt"
-outfile="outfile.txt"
-cmd1="cat"
-cmd2="echo "test""
-cmd3="cat"
+PIPEX_EXEC=./pipex
+INPUT_FILE=test
+OUTPUT_FILE=output
+EXPECTED_FILE=expected.txt
 
-# Create infile with some content
-echo "Creating infile with some content..."
-echo -e "Hello World\nThis is a test file\npipex project" > $infile
+# Test function
+run_test() {
+    local cmd1="$1"
+    local cmd2="$2"
+    local input="$3"
+    local expected_output="$4"
 
-# Run pipex
-echo "Running pipex..."
-./pipex $infile "$cmd1" "$cmd2" "$cmd3" $outfile
+    # Prepare input file
+    echo -n "$input" > "$INPUT_FILE"
 
-# Display the output
-echo "Output:"
-cat $outfile
+    # Run pipex
+    $PIPEX_EXEC "$INPUT_FILE" "$cmd1" "$cmd2" "$OUTPUT_FILE"
 
-# Clean up
-rm -f $infile $outfile
+    # Prepare expected output
+    echo -n "$expected_output" > "$EXPECTED_FILE"
+
+    # Compare output
+    if diff -q "$OUTPUT_FILE" "$EXPECTED_FILE" > /dev/null; then
+        echo "Test passed: $cmd1 | $cmd2"
+    else
+        echo "Test failed: $cmd1 | $cmd2"
+        echo "Expected:"
+        cat "$EXPECTED_FILE"
+        echo ""
+	echo "Got:"
+        cat "$OUTPUT_FILE"
+    fi
+
+    # Cleanup
+}
+
+# Tests
+run_test "echo hello" "wc -c" "hello" "6"
+run_test "echo hello world" "grep hello" "hello world" "hello world"
+run_test "echo abc" "tr a z" "abc" "zbc"
+
