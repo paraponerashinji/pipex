@@ -6,20 +6,21 @@
 /*   By: aharder <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/02 15:05:13 by aharder           #+#    #+#             */
-/*   Updated: 2025/02/12 02:20:43 by aharder          ###   ########.fr       */
+/*   Updated: 2025/02/12 16:04:20 by aharder          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 #include "libft/libft.h"
 
-void free_split(char **split)
+void	free_split(char **split)
 {
-    int i = 0;
+	int	i;
 
-    while (split[i])
-        free(split[i++]);
-    free(split);
+	i = 0;
+	while (split[i])
+		free(split[i++]);
+	free(split);
 }
 
 int	checkargs(int argc)
@@ -81,26 +82,17 @@ char	*get_path(char *cmd, char **env)
 	return (cmd);
 }
 
-void	executecommand(char *cmd, char **args, char **envp)
+void	executecommand(char *cmd, char **args, int i_fd, int o_fd, char **envp)
 {
 	pid_t	p;
 	char	*full_cmd;
-	int	pipe_fd[2];
 
-	pipe(pipe_fd);
 	p = fork();
 	if (p == 0)
 	{
-		close(pipe_fd[0]);
-		if (dup2(pipe_fd[1], 3) == -1)
-		{
-			perror("dup2 failed");
-			exit(1);
-		}
-		//ft_printf("test");
-		close(pipe_fd[1]);
+		dup2(i_fd, STDIN_FILENO);
+		dup2(o_fd, STDOUT_FILENO);
 		full_cmd = get_path(cmd, envp);
-		//ft_printf("%s\n", full_cmd);
 		execve(full_cmd, args, envp);
 		perror("execve failed");
 		free(full_cmd);
@@ -109,44 +101,40 @@ void	executecommand(char *cmd, char **args, char **envp)
 	else if (p == -1)
 		ft_printf("fork error");
 	else
-	{
-		//ft_printf("test");
-		close(pipe_fd[1]);
-		dup2(pipe_fd[0], STDIN_FILENO);
-		close(pipe_fd[0]);
 		waitpid(p, NULL, 0);
-	}
 }
 
-int	createpipes(int	argc, char **argv, char **envp)
+int	createpipes(int argc, char **argv, char **envp)
 {
 	int	inout_fd[2];
 	int	i;
 	char	**args;
+	int	p_fd[2];
 
-	if ((inout_fd[0] = open(argv[1], O_RDONLY)) < 0)
-		return (ft_printf("Error opening infile"));
-	if ((inout_fd[1] = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0)
-		return (ft_printf("Error opening outfile"));
+	inout_fd[0] = open(argv[1], O_RDONLY);
+	inout_fd[1] = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	i = 2;
-	dup2(inout_fd[0], 0);
-	close(inout_fd[0]);
 	while (i < argc - 1)
 	{
-		//ft_printf("test");
 		args = ft_split(argv[i], ' ');
-		if (i == argc - 2)
-			dup2(inout_fd[1], STDOUT_FILENO);
-		executecommand(args[0], args, envp);
+		if (i < argc - 2)
+			pipe(p_fd);
+		else
+			p_fd[1] = inout_fd[1];
+		executecommand(args[0], args, inout_fd[0], p_fd[1], envp);
 		free_split(args);
+		if (i < argc - 2)
+			close(p_fd[1]);
+		if (inout_fd[0] != 0)
+			close(inout_fd[0]);
+		inout_fd[0] = p_fd[0];
 		i++;
 	}
-	close(inout_fd[1]);
 	return (1);
 }
+
 int	main(int argc, char *argv[], char *envp[])
 {
-	//ft_printf("test");
 	if (!checkargs(argc))
 		return (ft_printf("Erreur : args\n"));
 	createpipes(argc, argv, envp);
